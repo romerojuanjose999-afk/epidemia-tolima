@@ -1,0 +1,14 @@
+# Dataset (55 MB): se regenera con  python generador/generar_dataset.py
+data/*.csv
+data_*/
+# Credenciales: NUNCA se suben (penalización -5 puntos)
+.env
+credenciales/
+*.pem
+*-sa.json
+# Python / sistema
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+Thumbs.db
