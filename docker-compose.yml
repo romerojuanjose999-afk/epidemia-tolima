@@ -1,0 +1,110 @@
+# =====================================================================
+# Paso 2 - Infraestructura local
+# Proyecto: Rastreo y propagación de una epidemia en el Tolima (Reto 5)
+# Servicios: Kafka, Cassandra, Neo4j y Spark (+ Kafka UI para la demo)
+# Uso:  docker compose up -d      |   Apagar: docker compose down
+# Ajustado para PC con 8 GB de RAM (Docker limitado a 4 GB)
+# =====================================================================
+
+services:
+
+  # ---------- KAFKA: ingesta de eventos de contacto en tiempo real ----------
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: kafka
+    ports:
+      - "9092:9092"            # acceso desde el PC (scripts Python)
+    environment:
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"   # debe ser un UUID en base64 de 22 caracteres
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:29092,PLAINTEXT_HOST://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_HEAP_OPTS: "-Xmx384m -Xms384m"
+    restart: unless-stopped
+
+  # Interfaz web para VER los mensajes fluyendo por Kafka (útil en la demo)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"            # http://localhost:8090
+    environment:
+      KAFKA_CLUSTERS_0_NAME: epidemia-tolima
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      JAVA_OPTS: "-Xmx256m"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+
+  # ---------- CASSANDRA: almacenamiento operativo (consulta por persona / lugar) ----------
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: epidemia-tolima
+      MAX_HEAP_SIZE: 768M
+      HEAP_NEWSIZE: 128M
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces' || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+
+  # ---------- NEO4J: grafo de contactos (rastreo, PageRank, comunidades) ----------
+  neo4j:
+    image: neo4j:5.26
+    container_name: neo4j
+    ports:
+      - "7474:7474"            # navegador: http://localhost:7474
+      - "7687:7687"            # conexión bolt para Python
+    environment:
+      NEO4J_AUTH: neo4j/epidemia2025
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'   # GDS: PageRank, Louvain, centralidad
+      NEO4J_server_memory_heap_initial__size: 384m
+      NEO4J_server_memory_heap_max__size: 768m
+      NEO4J_server_memory_pagecache_size: 256m
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*,gds.*
+    volumes:
+      - neo4j_data:/data
+      - ./data:/var/lib/neo4j/import     # el CSV queda visible para LOAD CSV
+
+  # ---------- SPARK: procesamiento (limpieza, agregados, streaming) ----------
+  spark-master:
+    image: apache/spark:3.5.3
+    container_name: spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "8080:8080"            # interfaz de Spark: http://localhost:8080
+      - "7077:7077"
+    volumes:
+      - ./:/opt/app            # código y datos del proyecto dentro de Spark
+
+  spark-worker:
+    image: apache/spark:3.5.3
+    container_name: spark-worker
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 1g
+    depends_on:
+      - spark-master
+    volumes:
+      - ./:/opt/app
+
+volumes:
+  cassandra_data:
+  neo4j_data:
