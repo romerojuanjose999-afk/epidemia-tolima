@@ -1,0 +1,53 @@
+{
+  "generado": "2026-11-18T22:06:41",
+  "semilla": 2025,
+  "personas": 37000,
+  "dias": 90,
+  "fecha_inicio": "2025-03-03",
+  "parametros": {
+    "P_HOGAR_DIA": 0.12,
+    "P_CONTACTO_BASE": 0.7,
+    "N_CASOS_INDICE": 20,
+    "DIA_MEDIDAS": 45,
+    "FACTOR_MEDIDAS": {
+      "ESTUDIO": 0.3,
+      "TRABAJO": 0.7,
+      "COMUNITARIO": 0.5
+    },
+    "LATENCIA": [
+      2,
+      5
+    ],
+    "INFECCIOSO": [
+      5,
+      10
+    ],
+    "INCUBACION": [
+      3,
+      7
+    ],
+    "CONTACTOS_POR_PERSONA": {
+      "COLEGIO": 0.55,
+      "UNIVERSIDAD": 0.5,
+      "EMPRESA": 0.45,
+      "MERCADO": 0.7,
+      "TRANSPORTE": 0.9,
+      "IGLESIA": 0.7,
+      "PLAZA": 0.5,
+      "HOSPITAL": 0.6
+    }
+  },
+  "resumen": {
+    "total_registros": 595651,
+    "infectados_totales": 8765,
+    "tasa_ataque": 0.2369,
+    "fallecidos": 30,
+    "casos_confirmados": 3542,
+    "R0_empirico_generacion_1_3": 1.74
+  },
+  "archivo_final": {
+    "nombre": "dataset_epidemia_tolima.csv",
+    "registros": 526037,
+    "sha256": "c63bc2eaf820156da83e9f0c99a3d09ab19f32a3f60fbc0b50ea21ed1ef4fd68"
+  }
+}
