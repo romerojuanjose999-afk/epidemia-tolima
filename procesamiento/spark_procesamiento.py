@@ -72,6 +72,9 @@ def main():
               .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem"))
     spark = (b.config("spark.sql.shuffle.partitions", "8")
               .config("spark.sql.session.timeZone", "UTC")     # mismas horas en cualquier PC
+              # Algunas versiones de pandas guardan fechas en NANOsegundos y Spark 3.5 no las lee
+              # ("Illegal Parquet type: TIMESTAMP(NANOS)"); con esto se leen como número y se convierten
+              .config("spark.sql.legacy.parquet.nanosAsLong", "true")
               .getOrCreate())
     spark.sparkContext.setLogLevel("WARN")
 
@@ -83,6 +86,8 @@ def main():
     # ------------------------------------------------------------------ 1. LEER
     print(f"\n1) Leyendo histórico: {origen}")
     raw = spark.read.parquet(origen)
+    if dict(raw.dtypes)["fecha_hora"] == "bigint":          # nanosegundos -> timestamp
+        raw = raw.withColumn("fecha_hora", F.timestamp_micros((F.col("fecha_hora") / 1000).cast("long")))
     n_raw = raw.count()
     print(f"   Registros leídos: {n_raw:,d}  |  particiones (días): {raw.select('fecha').distinct().count()}")
 

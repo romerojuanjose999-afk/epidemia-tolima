@@ -16,6 +16,7 @@ AWS_DEFAULT_REGION y S3_BUCKET (ver .env.example).
 
 Uso (desde la carpeta del proyecto):
     python ingesta/consumidor_s3.py
+    python ingesta/consumidor_s3.py --grupo escritor-s3-v2   # volver a leer TODO el topic (grupo nuevo)
 """
 import argparse
 import io
@@ -110,7 +111,10 @@ def main():
     bytes_total, archivos = 0, 0
     for fecha, parte in df.groupby("fecha"):
         buf = io.BytesIO()
-        parte.drop(columns="fecha").to_parquet(buf, index=False, compression="snappy")
+        # coerce_timestamps="us": fechas en MICROsegundos, el formato que Spark 3.x sabe leer
+        # (algunas versiones de pandas guardan nanosegundos y Spark falla con "Illegal Parquet type")
+        parte.drop(columns="fecha").to_parquet(buf, index=False, compression="snappy",
+                                               coerce_timestamps="us", allow_truncated_timestamps=True)
         clave = f"{a.prefijo}/fecha={fecha}/contactos.parquet"
         s3.put_object(Bucket=bucket, Key=clave, Body=buf.getvalue())
         bytes_total += buf.tell()
