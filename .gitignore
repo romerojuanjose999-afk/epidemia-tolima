@@ -12,3 +12,7 @@ __pycache__/
 .venv/
 .DS_Store
 Thumbs.db
+# Spark: dependencias descargadas y resultados (se regeneran con el Paso 6)
+.ivy2/
+data/curated/
+data/lake_local/
